@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.cache/
+.ruff_cache/
+.pytest_cache/
+.DS_Store
+
+# Large model artifacts — never commit
+*.pt
+*.safetensors
+*.bin
+
+# Keep aggregate metrics + dashboard data; ignore raw HF caches if any leak in
+.hf_cache/
+huggingface/
+
+# Local-only secrets
+.env
+.hf_token

@@ -1,0 +1,35 @@
+[project]
+name = "multi-agent-assistant-axis"
+version = "0.1.0"
+description = "Activation-steering 2-agent QA experiment on Llama-3.1-8B-Instruct"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "transformers>=4.45",
+    "datasets>=2.20",
+    "accelerate>=0.34",
+    "huggingface-hub>=0.24",
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "tqdm>=4.66",
+    "plotly>=5.22",
+    "jinja2>=3.1",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.6",
+    "pytest>=8.3",
+]
+
+[tool.uv]
+# Don't let uv replace the system torch (Blackwell-compatible build on this pod).
+override-dependencies = ["torch ; sys_platform == 'never'"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "B"]
+ignore = ["E501"]
