@@ -120,7 +120,8 @@ def main():
     pairs = [(a_s, a_c) for a_s in args.alphas for a_c in args.alphas]
     print(f"[sweep] {len(pairs)} (α_s, α_c) pairs × {len(examples)} examples × 3 passes")
 
-    for a_s, a_c in tqdm(pairs, desc="conditions"):
+    for ci, (a_s, a_c) in enumerate(tqdm(pairs, desc="conditions")):
+        cond_t0 = time.time()
         pending = [ex for ex in examples if (a_s, a_c, ex.id) not in done]
         if not pending:
             continue
@@ -141,8 +142,15 @@ def main():
             append_jsonl(jsonl_path, row)
             done.add((a_s, a_c, tr.example_id))
         torch.cuda.empty_cache()
-        elapsed = time.time() - t0
-        print(f"[sweep] (α_s={a_s}, α_c={a_c}) done; elapsed {elapsed/60:.1f} min")
+        cond_elapsed = time.time() - cond_t0
+        total_elapsed = time.time() - t0
+        eta = total_elapsed / (ci + 1) * (len(pairs) - ci - 1)
+        print(
+            f"[sweep] cond {ci+1}/{len(pairs)} (α_s={a_s}, α_c={a_c}) "
+            f"done in {cond_elapsed:.1f}s; "
+            f"elapsed {total_elapsed/60:.1f} min; ETA {eta/60:.1f} min",
+            flush=True,
+        )
 
     # Aggregate.
     rows: list[dict] = []

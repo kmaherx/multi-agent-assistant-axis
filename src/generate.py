@@ -29,8 +29,11 @@ def load_model_and_tokenizer(
         model_id,
         torch_dtype=dtype,
         device_map=device,
+        attn_implementation="sdpa",
     )
     model.eval()
+    if hasattr(model, "generation_config"):
+        model.generation_config.use_cache = True
     return model, tokenizer
 
 
