@@ -17,7 +17,7 @@
   - `per_condition_metrics.csv` — one row per `(α_solver, α_critic)`
   - `per_example_results.jsonl` — full transcripts, streamed during the run
   - `baselines/*.json` — baseline results
-- Dashboard is built into `dashboard/index.html` (static, deployable on GitHub Pages).
+- Dashboard is built into `docs/index.html` (static, deployable on GitHub Pages from the `/docs` folder).
 
 ## Code style
 

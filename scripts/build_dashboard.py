@@ -1,11 +1,11 @@
-"""Build dashboard/index.html.
+"""Build docs/index.html.
 
 Writes:
-  dashboard/data/index.json                — heatmaps, per_condition, baselines summary, cell index, run config
-  dashboard/data/cells/{a_s}__{a_c}.json   — ALL transcripts for that condition (full text)
-  dashboard/data/baselines/{name}.json     — ALL transcripts for each baseline run
-  dashboard/data/smoke.json (optional)     — smoke-test transcripts if outputs/smoke/transcripts.jsonl exists
-  dashboard/index.html                     — single page that fetches the above lazily
+  docs/data/index.json                — heatmaps, per_condition, baselines summary, cell index, run config
+  docs/data/cells/{a_s}__{a_c}.json   — ALL transcripts for that condition (full text)
+  docs/data/baselines/{name}.json     — ALL transcripts for each baseline run
+  docs/data/smoke.json (optional)     — smoke-test transcripts if outputs/smoke/transcripts.jsonl exists
+  docs/index.html                     — single page that fetches the above lazily
 """
 from __future__ import annotations
 
@@ -20,8 +20,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from jinja2 import Environment, FileSystemLoader, select_autoescape  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
-TEMPLATES = REPO / "dashboard" / "templates"
-DASHBOARD = REPO / "dashboard"
+TEMPLATES = REPO / "docs" / "templates"
+DASHBOARD = REPO / "docs"
 DATA = DASHBOARD / "data"
 
 
@@ -168,7 +168,7 @@ def main():
         "summary": summary,
     }
     (out_data / "index.json").write_text(json.dumps(index_payload, indent=2))
-    print(f"[dashboard] wrote {out_data/'index.json'} (+ {len(cell_index)} cell files, "
+    print(f"[docs] wrote {out_data/'index.json'} (+ {len(cell_index)} cell files, "
           f"{len(baseline_index)} baseline files)")
 
     env = Environment(
@@ -178,7 +178,7 @@ def main():
     tpl = env.get_template("index.html.j2")
     html = tpl.render(repo_url="https://github.com/kmaherx/multi-agent-assistant-axis")
     Path(args.out_html).write_text(html)
-    print(f"[dashboard] wrote {args.out_html}")
+    print(f"[docs] wrote {args.out_html}")
 
 
 if __name__ == "__main__":

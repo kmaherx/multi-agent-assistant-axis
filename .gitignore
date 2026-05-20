@@ -19,3 +19,6 @@ huggingface/
 # Local-only secrets
 .env
 .hf_token
+
+# Runtime logs (the jsonl + metrics.json + per_condition_metrics.csv are the deliverables)
+outputs/*.log

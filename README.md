@@ -6,6 +6,22 @@ The experiment maps the 2D performance landscape `F(α_solver, α_critic)` and t
 
 **Interactive dashboard:** https://kmaherx.github.io/multi-agent-assistant-axis/
 
+## Pilot result (n=50, GSM8K, layer 16)
+
+| condition | final accuracy |
+|---|---:|
+| single-agent direct (no critic) | **86.0%** |
+| 2-agent best @ (α_s=0, α_c=−2) and (α_s=0, α_c=+5) | 80.0% |
+| 2-agent unsteered (α_s=0, α_c=0) | 78.0% |
+| random-vector matched-norm @ α=(5,5) | 84.0% |
+| random-vector matched-norm @ α=(−5,−5) | 74.0% |
+| 2-agent assistant-axis @ α=(5,5) | 66.0% |
+| single-agent self-revision (no critic, α=0) | 62.0% |
+
+Two findings worth keeping:
+1. The critic-then-revise loop is **net harmful** at this scale — the unsteered solver alone (86%) beats every 2-agent condition (best 80%).
+2. The assistant-axis at strong positive α does **real semantic damage** — α=(5,5) drops to 66% on the actual axis but only to 84% on a random matched-norm vector.
+
 ## Quick start
 
 ```bash
@@ -35,7 +51,7 @@ uv run python scripts/build_dashboard.py \
   --run_dir outputs/gsm8k__llama31_8b__axis_layer16__seed42
 
 # View locally
-cd dashboard && python -m http.server 8080
+cd docs && python -m http.server 8080
 ```
 
 ## Repo layout
@@ -43,9 +59,9 @@ cd dashboard && python -m http.server 8080
 ```
 src/        axis hook, data, scoring, generation, protocols, metrics
 scripts/    smoke_test, run_sweep, run_baselines, build_dashboard
+docs/       static HTML/Plotly dashboard (served from GitHub Pages)
 plans/      versioned experiment plans
 outputs/    per-run results (transcripts + metrics)
-dashboard/  static HTML/Plotly dashboard (GitHub Pages)
 ```
 
 See `plans/001_mvp_assistant_axis_qa.md` for the full experimental spec.

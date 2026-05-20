@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Multi-agent assistant-axis steering — GSM8K dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #161922; --text: #e6e8ee; --muted: #9aa3b2;
+    --accent: #7ab8ff; --border: #242a37;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    font-size: 14px; line-height: 1.5;
+  }
+  header {
+    padding: 16px 24px; border-bottom: 1px solid var(--border);
+    background: var(--panel); display: flex; align-items: baseline; gap: 24px; flex-wrap: wrap;
+  }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .meta { color: var(--muted); font-size: 13px; }
+  header a { color: var(--accent); text-decoration: none; }
+  nav {
+    padding: 0 24px; background: var(--panel); border-bottom: 1px solid var(--border);
+    display: flex; gap: 4px; flex-wrap: wrap;
+  }
+  nav button {
+    background: transparent; color: var(--muted); border: none;
+    padding: 12px 16px; cursor: pointer; font-size: 14px; border-bottom: 2px solid transparent;
+  }
+  nav button.active { color: var(--text); border-bottom-color: var(--accent); }
+  main { padding: 20px 24px; max-width: 1440px; margin: 0 auto; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 16px; margin-bottom: 16px; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .col { flex: 1; min-width: 320px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .stat { background: var(--panel); border: 1px solid var(--border); padding: 12px; border-radius: 6px; }
+  .stat .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat .value { font-size: 22px; font-weight: 600; margin-top: 4px; }
+  label { color: var(--muted); margin-right: 8px; }
+  select, input[type="number"], input[type="text"] {
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    padding: 6px 10px; border-radius: 4px; font-size: 14px;
+  }
+  button.btn {
+    background: #1f2533; color: var(--text); border: 1px solid var(--border);
+    padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 13px;
+  }
+  button.btn:hover { background: #29304a; }
+  button.btn[disabled] { opacity: 0.4; cursor: not-allowed; }
+  .toggle-group button { margin-right: 4px; }
+  .toggle-group button.active { background: var(--accent); color: #001225; border-color: var(--accent); }
+  #heatmap, #baseline-bar { width: 100%; }
+  pre {
+    background: #0a0c10; border: 1px solid var(--border); border-radius: 4px;
+    padding: 10px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px;
+    line-height: 1.45;
+  }
+  .empty { color: var(--muted); font-style: italic; }
+  .ok { color: #6ad27a; } .bad { color: #ff6b6b; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .transcript-card {
+    background: #0d1018; border: 1px solid var(--border); border-radius: 6px;
+    padding: 12px; margin-bottom: 10px;
+  }
+  .transcript-card .meta-line { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+  .transcript-card details > summary {
+    cursor: pointer; padding: 4px 0; color: var(--muted); font-size: 12px;
+    user-select: none;
+  }
+  .transcript-card details[open] > summary { color: var(--text); }
+  .pager { display: flex; align-items: center; gap: 12px; margin: 10px 0; flex-wrap: wrap; }
+  .filter-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 11px; margin-right: 4px; }
+  .badge.w2r { background: rgba(106,210,122,0.15); color: #6ad27a; }
+  .badge.r2w { background: rgba(255,107,107,0.15); color: #ff6b6b; }
+  .badge.unc { background: rgba(154,163,178,0.15); color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Multi-agent assistant-axis steering</h1>
+  <div class="meta" id="header-meta">loading…</div>
+  <div class="meta"><a href="https://github.com/kmaherx/multi-agent-assistant-axis" target="_blank">github</a></div>
+</header>
+
+<nav>
+  <button data-tab="heatmaps" class="active">Heatmaps</button>
+  <button data-tab="transcripts">Transcripts</button>
+  <button data-tab="baselines">Baselines</button>
+  <button data-tab="conditions">Per-condition table</button>
+  <button data-tab="smoke">Smoke / sanity</button>
+  <button data-tab="about">About</button>
+</nav>
+
+<main>
+
+<!-- HEATMAPS -->
+<section id="tab-heatmaps" class="tab-content active">
+  <div class="summary-grid" id="summary-cards"></div>
+  <div class="panel" style="margin-top: 16px;">
+    <div style="margin-bottom: 12px;">
+      <label for="metric-select">Metric:</label>
+      <select id="metric-select">
+        <option value="final_accuracy">final_accuracy</option>
+        <option value="initial_accuracy">initial_accuracy</option>
+        <option value="wrong_to_right_rate">wrong_to_right_rate</option>
+        <option value="right_to_wrong_rate">right_to_wrong_rate</option>
+        <option value="answer_change_rate">answer_change_rate</option>
+        <option value="final_parse_failure_rate">final_parse_failure_rate</option>
+      </select>
+      <span class="meta" style="margin-left: 16px;">Click a cell to jump to its transcripts.</span>
+    </div>
+    <div id="heatmap" style="height: 560px;"></div>
+  </div>
+</section>
+
+<!-- TRANSCRIPTS -->
+<section id="tab-transcripts" class="tab-content">
+  <div class="panel">
+    <div class="filter-bar">
+      <span>
+        <label for="cell-select">Condition (α_solver, α_critic):</label>
+        <select id="cell-select"></select>
+      </span>
+      <span class="toggle-group">
+        <label>Show:</label>
+        <button class="btn active" data-filter="all">all</button>
+        <button class="btn" data-filter="wrong_to_right">wrong → right</button>
+        <button class="btn" data-filter="right_to_wrong">right → wrong</button>
+        <button class="btn" data-filter="unchanged_correct">unchanged ✓</button>
+        <button class="btn" data-filter="unchanged_wrong">unchanged ✗</button>
+      </span>
+      <span>
+        <label for="search-input">Search:</label>
+        <input id="search-input" type="text" placeholder="text in question/output…" />
+      </span>
+      <span id="cell-counts" class="meta"></span>
+    </div>
+    <div class="pager" id="pager-top"></div>
+    <div id="transcripts-list"></div>
+    <div class="pager" id="pager-bottom"></div>
+  </div>
+</section>
+
+<!-- BASELINES -->
+<section id="tab-baselines" class="tab-content">
+  <div class="panel">
+    <h3 style="margin-top: 0;">Final-accuracy comparison</h3>
+    <div id="baseline-bar" style="height: 380px;"></div>
+  </div>
+  <div class="panel">
+    <h3 style="margin-top: 0;">All metrics</h3>
+    <div id="baseline-table"></div>
+  </div>
+  <div class="panel">
+    <h3 style="margin-top: 0;">Baseline transcripts</h3>
+    <div class="filter-bar">
+      <span>
+        <label for="baseline-select">Baseline:</label>
+        <select id="baseline-select"></select>
+      </span>
+      <span id="baseline-counts" class="meta"></span>
+    </div>
+    <div class="pager" id="baseline-pager-top"></div>
+    <div id="baseline-list"></div>
+    <div class="pager" id="baseline-pager-bottom"></div>
+  </div>
+</section>
+
+<!-- CONDITIONS TABLE -->
+<section id="tab-conditions" class="tab-content">
+  <div class="panel" style="overflow-x: auto;">
+    <table id="conditions-table"></table>
+  </div>
+</section>
+
+<!-- SMOKE -->
+<section id="tab-smoke" class="tab-content">
+  <div class="panel">
+    <h3 style="margin-top: 0;">Smoke / sanity-check transcripts</h3>
+    <p class="meta">Single-example outputs used to verify the steering hook fires and produces visibly different generations at different α values. These were run before the pilot sweep started.</p>
+    <div id="smoke-list"><div class="empty">loading…</div></div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section id="tab-about" class="tab-content">
+  <div class="panel">
+    <h3 style="margin-top: 0;">About this experiment</h3>
+    <p>Two Llama-3.1-8B-Instruct agents in a <b>solver → critic → revision</b> loop on GSM8K, each steered along
+       <a style="color: var(--accent)" href="https://huggingface.co/datasets/Butanium/llama-3.1-8b-instruct-assistant-axis" target="_blank">Butanium's assistant-axis</a>
+       at independent coefficients <code>(α_solver, α_critic)</code>.</p>
+    <ul>
+      <li><b>Solver pass:</b> agent A answers (steered at α_solver).</li>
+      <li><b>Critic pass:</b> agent B critiques A's answer (steered at α_critic).</li>
+      <li><b>Revision pass:</b> agent A revises given the critique (steered at α_solver).</li>
+    </ul>
+    <p>Final accuracy is numeric exact-match on GSM8K's gold answer. Positive α → more default assistant-like; negative α → less. Steering happens at a single layer (residual stream addition).</p>
+    <pre id="config-pre"></pre>
+  </div>
+</section>
+
+</main>
+
+<script>
+(function () {
+  const DATA = {};       // populated from data/index.json
+  const CACHE = {};      // per-cell + per-baseline payloads, fetched on demand
+
+  function escapeHtml(s) {
+    return (s || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+  function fmtPct(x, digits = 1) {
+    if (x == null || isNaN(x)) return "—";
+    return (x * 100).toFixed(digits) + "%";
+  }
+
+  async function fetchJson(url) {
+    if (CACHE[url]) return CACHE[url];
+    const r = await fetch(url);
+    if (!r.ok) throw new Error("fetch " + url + ": " + r.status);
+    const j = await r.json();
+    CACHE[url] = j;
+    return j;
+  }
+
+  // ---- init
+  fetch("data/index.json").then(r => r.json()).then(idx => {
+    Object.assign(DATA, idx);
+    renderHeader();
+    renderSummaryCards();
+    renderHeatmap("final_accuracy");
+    renderBaselineBar();
+    renderBaselineTable();
+    renderConditionsTable();
+    renderConfigPre();
+    populateCellSelect();
+    populateBaselineSelect();
+    setupTabs();
+    setupMetricSelect();
+    setupFilters();
+    setupSearch();
+    setupBaselinePager();
+    loadSmoke();
+  }).catch(err => {
+    document.getElementById("header-meta").textContent = "ERROR loading data/index.json: " + err.message;
+  });
+
+  function renderHeader() {
+    const cfg = DATA.config || {};
+    document.getElementById("header-meta").textContent =
+      `${cfg.model_short || cfg.model || "?"} · ${cfg.dataset || "?"}/${cfg.split || "?"} ` +
+      `· n=${cfg.n_examples ?? "?"} · layer ${cfg.layer ?? "?"} · seed ${cfg.seed ?? "?"} ` +
+      `· α∈[${(cfg.alphas || []).join(", ")}]`;
+  }
+
+  function renderSummaryCards() {
+    const sum = DATA.summary || {};
+    const cards = [];
+    if (sum.best) {
+      cards.push(["best final acc", fmtPct(sum.best.final_accuracy),
+        `α=(${sum.best.alpha_solver}, ${sum.best.alpha_critic})`]);
+    }
+    if (sum.unsteered && sum.best) {
+      cards.push(["unsteered (0,0)", fmtPct(sum.unsteered.final_accuracy),
+        `Δ vs best: ${((sum.best.final_accuracy - sum.unsteered.final_accuracy)*100).toFixed(1)} pp`]);
+    }
+    if (DATA.baselines && DATA.baselines.single_agent_direct) {
+      cards.push(["single-agent direct", fmtPct(DATA.baselines.single_agent_direct.metrics.final_accuracy), "no critic"]);
+    }
+    if (DATA.baselines && DATA.baselines.single_agent_self_revision) {
+      cards.push(["self-revision", fmtPct(DATA.baselines.single_agent_self_revision.metrics.final_accuracy), "1 agent + self-revise"]);
+    }
+    cards.push(["rows", sum.n_rows ?? "?", `${(DATA.per_condition || []).length} conditions`]);
+    document.getElementById("summary-cards").innerHTML = cards.map(c =>
+      `<div class="stat"><div class="label">${c[0]}</div><div class="value">${c[1]}</div><div class="meta">${c[2]||""}</div></div>`
+    ).join("");
+  }
+
+  // ---- heatmap
+  let _curMetric = "final_accuracy";
+  function renderHeatmap(metric) {
+    _curMetric = metric;
+    const m = DATA.heatmaps[metric]; if (!m) return;
+    const trace = {
+      x: m.x, y: m.y, z: m.z, type: "heatmap", colorscale: "Viridis",
+      hovertemplate: "α_critic=%{x}<br>α_solver=%{y}<br>" + metric + "=%{z:.3f}<extra></extra>",
+      colorbar: { title: { text: metric, font: { color: "#e6e8ee" } }, tickfont: { color: "#e6e8ee" } },
+    };
+    const annotations = [];
+    for (let i = 0; i < m.y.length; i++)
+      for (let j = 0; j < m.x.length; j++) {
+        const v = m.z[i][j];
+        if (v == null) continue;
+        annotations.push({
+          x: m.x[j], y: m.y[i],
+          text: (typeof v === "number" ? v.toFixed(2) : ""),
+          showarrow: false, font: { color: "#fff", size: 11 },
+        });
+      }
+    Plotly.react("heatmap", [trace], {
+      paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)", font: { color: "#e6e8ee" },
+      xaxis: { title: { text: "α_critic" }, type: "category" },
+      yaxis: { title: { text: "α_solver" }, type: "category", autorange: "reversed" },
+      margin: { l: 60, r: 80, t: 20, b: 60 }, annotations,
+    }, { displayModeBar: false, responsive: true });
+
+    document.getElementById("heatmap").on("plotly_click", function (ev) {
+      if (!ev.points || !ev.points.length) return;
+      const p = ev.points[0];
+      const key = `${p.y}__${p.x}`;
+      const sel = document.getElementById("cell-select");
+      if ([...sel.options].some(o => o.value === key)) {
+        sel.value = key;
+        sel.dispatchEvent(new Event("change"));
+        document.querySelector('nav button[data-tab="transcripts"]').click();
+      }
+    });
+  }
+  function setupMetricSelect() {
+    document.getElementById("metric-select").addEventListener("change", e => renderHeatmap(e.target.value));
+  }
+
+  // ---- transcripts tab
+  let _curCellKey = null;
+  let _curCellRows = [];
+  let _curFilter = "all";
+  let _curSearch = "";
+  let _curPage = 0;
+  const PAGE_SIZE = 10;
+
+  function populateCellSelect() {
+    const sel = document.getElementById("cell-select");
+    (DATA.cell_index || []).forEach(c => {
+      const o = document.createElement("option");
+      o.value = c.key;
+      o.textContent = `α_s=${c.alpha_solver}, α_c=${c.alpha_critic}  ·  ${c.summary.n} rows  ·  final_acc=${(c.summary.n_final_correct/c.summary.n*100).toFixed(1)}%`;
+      sel.appendChild(o);
+    });
+    sel.addEventListener("change", () => loadCell(sel.value));
+    if (sel.options.length) {
+      sel.value = sel.options[0].value;
+      loadCell(sel.value);
+    }
+  }
+  async function loadCell(key) {
+    _curCellKey = key;
+    _curPage = 0;
+    const cfg = (DATA.cell_index || []).find(c => c.key === key);
+    if (!cfg) return;
+    try {
+      const payload = await fetchJson(cfg.file);
+      _curCellRows = payload.rows || [];
+      renderTranscripts();
+    } catch (e) {
+      document.getElementById("transcripts-list").innerHTML =
+        `<div class="empty">ERROR loading ${cfg.file}: ${e.message}</div>`;
+    }
+  }
+  function classifyRow(r) {
+    if (!r.initial_correct && r.final_correct) return "wrong_to_right";
+    if (r.initial_correct && !r.final_correct) return "right_to_wrong";
+    if (r.initial_correct && r.final_correct) return "unchanged_correct";
+    return "unchanged_wrong";
+  }
+  function renderTranscripts() {
+    const rows = _curCellRows;
+    const filtered = rows.filter(r => {
+      const cls = classifyRow(r);
+      if (_curFilter !== "all" && cls !== _curFilter) return false;
+      if (_curSearch) {
+        const s = _curSearch.toLowerCase();
+        const hay = (r.question + r.initial_text + r.critique_text + r.final_text).toLowerCase();
+        if (!hay.includes(s)) return false;
+      }
+      return true;
+    });
+    // counts banner
+    const n = rows.length;
+    const counts = {
+      wrong_to_right: rows.filter(r => classifyRow(r) === "wrong_to_right").length,
+      right_to_wrong: rows.filter(r => classifyRow(r) === "right_to_wrong").length,
+      unchanged_correct: rows.filter(r => classifyRow(r) === "unchanged_correct").length,
+      unchanged_wrong: rows.filter(r => classifyRow(r) === "unchanged_wrong").length,
+    };
+    document.getElementById("cell-counts").innerHTML =
+      `${filtered.length}/${n} shown · `
+      + `<span class="badge w2r">w→r ${counts.wrong_to_right}</span>`
+      + `<span class="badge r2w">r→w ${counts.right_to_wrong}</span>`
+      + `<span class="badge unc">unc✓ ${counts.unchanged_correct}</span>`
+      + `<span class="badge unc">unc✗ ${counts.unchanged_wrong}</span>`;
+
+    const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    if (_curPage >= pages) _curPage = 0;
+    const slice = filtered.slice(_curPage * PAGE_SIZE, (_curPage + 1) * PAGE_SIZE);
+    document.getElementById("transcripts-list").innerHTML =
+      slice.length ? slice.map(renderTranscriptCard).join("") :
+      `<div class="empty">no rows match the current filter</div>`;
+    renderPagerInto("pager-top", _curPage, pages);
+    renderPagerInto("pager-bottom", _curPage, pages);
+  }
+  function renderTranscriptCard(r) {
+    const cls = classifyRow(r);
+    const badge = cls === "wrong_to_right" ? '<span class="badge w2r">wrong → right</span>'
+      : cls === "right_to_wrong" ? '<span class="badge r2w">right → wrong</span>'
+      : cls === "unchanged_correct" ? '<span class="badge unc">unchanged ✓</span>'
+      : '<span class="badge unc">unchanged ✗</span>';
+    return `<div class="transcript-card">
+      <div class="meta-line">
+        ${badge}
+        <b>${r.example_id}</b> · gold=${r.gold_number}
+        · initial=<span class="${r.initial_correct?'ok':'bad'}">${r.initial_parsed}</span>
+        · final=<span class="${r.final_correct?'ok':'bad'}">${r.final_parsed}</span>
+        · α_s=${r.alpha_solver} · α_c=${r.alpha_critic}
+      </div>
+      <details><summary>question</summary><pre>${escapeHtml(r.question)}</pre></details>
+      <details open><summary>initial (α_s=${r.alpha_solver})</summary><pre>${escapeHtml(r.initial_text)}</pre></details>
+      <details><summary>critique (α_c=${r.alpha_critic})</summary><pre>${escapeHtml(r.critique_text || "(none)")}</pre></details>
+      <details open><summary>final (α_s=${r.alpha_solver})</summary><pre>${escapeHtml(r.final_text)}</pre></details>
+    </div>`;
+  }
+  function renderPagerInto(id, page, total) {
+    const el = document.getElementById(id);
+    el.innerHTML =
+      `<button class="btn" id="${id}-prev" ${page <= 0 ? "disabled" : ""}>← prev</button>` +
+      `<span class="meta">page ${page+1} of ${total}</span>` +
+      `<button class="btn" id="${id}-next" ${page >= total-1 ? "disabled" : ""}>next →</button>`;
+    document.getElementById(id+"-prev").onclick = () => { if (_curPage > 0) { _curPage--; renderTranscripts(); } };
+    document.getElementById(id+"-next").onclick = () => { _curPage++; renderTranscripts(); };
+  }
+  function setupFilters() {
+    document.querySelectorAll('.toggle-group[role], .toggle-group').forEach(group => {
+      group.querySelectorAll("button[data-filter]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          group.querySelectorAll("button[data-filter]").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          _curFilter = btn.dataset.filter;
+          _curPage = 0;
+          renderTranscripts();
+        });
+      });
+    });
+  }
+  function setupSearch() {
+    const inp = document.getElementById("search-input");
+    let t;
+    inp.addEventListener("input", () => {
+      clearTimeout(t);
+      t = setTimeout(() => { _curSearch = inp.value.trim(); _curPage = 0; renderTranscripts(); }, 200);
+    });
+  }
+
+  // ---- baselines
+  function renderBaselineBar() {
+    const sum = DATA.summary || {};
+    const xs = [], ys = [];
+    const b = DATA.baselines || {};
+    if (b.single_agent_direct) { xs.push("single direct"); ys.push(b.single_agent_direct.metrics.final_accuracy); }
+    if (b.single_agent_self_revision) { xs.push("self-revision"); ys.push(b.single_agent_self_revision.metrics.final_accuracy); }
+    if (sum.unsteered) { xs.push("2-agent α=(0,0)"); ys.push(sum.unsteered.final_accuracy); }
+    if (sum.best) { xs.push(`2-agent best (${sum.best.alpha_solver},${sum.best.alpha_critic})`); ys.push(sum.best.final_accuracy); }
+    Object.keys(b).filter(k => k.startsWith("random_vector__")).forEach(k => {
+      xs.push("rand " + k.replace("random_vector__", "")); ys.push(b[k].metrics.final_accuracy);
+    });
+    Plotly.react("baseline-bar",
+      [{ x: xs, y: ys, type: "bar", marker: { color: "#7ab8ff" },
+         text: ys.map(v => v == null ? "—" : (v*100).toFixed(1)+"%"), textposition: "outside" }],
+      { paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)", font: { color: "#e6e8ee" },
+        yaxis: { title: { text: "final_accuracy" }, range: [0, 1] },
+        xaxis: { tickangle: -20 }, margin: { l: 60, r: 20, t: 30, b: 110 } },
+      { displayModeBar: false, responsive: true });
+  }
+  function renderBaselineTable() {
+    const rows = [];
+    const sum = DATA.summary || {};
+    const b = DATA.baselines || {};
+    if (b.single_agent_direct) rows.push(["single-agent direct", b.single_agent_direct.metrics]);
+    if (b.single_agent_self_revision) rows.push(["single-agent self-revision", b.single_agent_self_revision.metrics]);
+    Object.keys(b).filter(k => k.startsWith("random_vector__")).forEach(k => rows.push([k.replace("random_vector__","random "), b[k].metrics]));
+    if (sum.unsteered) rows.push(["2-agent α=(0,0)", sum.unsteered]);
+    if (sum.best) rows.push([`2-agent best (${sum.best.alpha_solver},${sum.best.alpha_critic})`, sum.best]);
+    const t = ["<tr><th>condition</th><th>final_acc</th><th>initial_acc</th><th>w→r</th><th>r→w</th><th>change</th><th>parse-fail</th><th>n</th></tr>"]
+      .concat(rows.map(([name, m]) => `<tr>
+        <td>${name}</td>
+        <td>${fmtPct(m.final_accuracy)}</td>
+        <td>${fmtPct(m.initial_accuracy)}</td>
+        <td>${fmtPct(m.wrong_to_right_rate)}</td>
+        <td>${fmtPct(m.right_to_wrong_rate)}</td>
+        <td>${fmtPct(m.answer_change_rate)}</td>
+        <td>${fmtPct(m.final_parse_failure_rate)}</td>
+        <td>${m.n ?? "—"}</td></tr>`));
+    document.getElementById("baseline-table").innerHTML = `<table>${t.join("")}</table>`;
+  }
+
+  // ---- baseline transcripts
+  let _curBaseline = null;
+  let _curBaselineRows = [];
+  let _curBaselinePage = 0;
+  function populateBaselineSelect() {
+    const sel = document.getElementById("baseline-select");
+    const items = DATA.baselines || {};
+    Object.keys(items).forEach(k => {
+      const o = document.createElement("option");
+      o.value = k;
+      o.textContent = `${k}  ·  n=${items[k].n}  ·  final_acc=${fmtPct(items[k].metrics.final_accuracy)}`;
+      sel.appendChild(o);
+    });
+    sel.addEventListener("change", () => loadBaseline(sel.value));
+    if (sel.options.length) {
+      sel.value = sel.options[0].value;
+      loadBaseline(sel.value);
+    }
+  }
+  async function loadBaseline(name) {
+    _curBaseline = name; _curBaselinePage = 0;
+    const item = (DATA.baselines || {})[name]; if (!item) return;
+    try {
+      const payload = await fetchJson(item.file);
+      _curBaselineRows = payload.rows || [];
+      renderBaselineTranscripts();
+    } catch (e) {
+      document.getElementById("baseline-list").innerHTML = `<div class="empty">ERROR: ${e.message}</div>`;
+    }
+  }
+  function renderBaselineTranscripts() {
+    const rows = _curBaselineRows;
+    document.getElementById("baseline-counts").innerHTML = `${rows.length} rows`;
+    const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+    if (_curBaselinePage >= pages) _curBaselinePage = 0;
+    const slice = rows.slice(_curBaselinePage * PAGE_SIZE, (_curBaselinePage + 1) * PAGE_SIZE);
+    document.getElementById("baseline-list").innerHTML =
+      slice.length ? slice.map(renderTranscriptCard).join("") : `<div class="empty">no rows</div>`;
+    renderBaselinePagerInto("baseline-pager-top", _curBaselinePage, pages);
+    renderBaselinePagerInto("baseline-pager-bottom", _curBaselinePage, pages);
+  }
+  function renderBaselinePagerInto(id, page, total) {
+    const el = document.getElementById(id);
+    el.innerHTML =
+      `<button class="btn" id="${id}-prev" ${page <= 0 ? "disabled" : ""}>← prev</button>` +
+      `<span class="meta">page ${page+1} of ${total}</span>` +
+      `<button class="btn" id="${id}-next" ${page >= total-1 ? "disabled" : ""}>next →</button>`;
+    document.getElementById(id+"-prev").onclick = () => { if (_curBaselinePage > 0) { _curBaselinePage--; renderBaselineTranscripts(); } };
+    document.getElementById(id+"-next").onclick = () => { _curBaselinePage++; renderBaselineTranscripts(); };
+  }
+  function setupBaselinePager() { /* set up in populateBaselineSelect */ }
+
+  // ---- conditions table
+  function renderConditionsTable() {
+    const pc = DATA.per_condition || [];
+    const headers = ["α_solver", "α_critic", "final_acc", "initial_acc", "w→r", "r→w", "change", "parse-fail", "n"];
+    const hdr = "<tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr>";
+    const rows = pc.map(c => `<tr>
+      <td>${c.alpha_solver}</td><td>${c.alpha_critic}</td>
+      <td>${fmtPct(c.final_accuracy)}</td>
+      <td>${fmtPct(c.initial_accuracy)}</td>
+      <td>${fmtPct(c.wrong_to_right_rate)}</td>
+      <td>${fmtPct(c.right_to_wrong_rate)}</td>
+      <td>${fmtPct(c.answer_change_rate)}</td>
+      <td>${fmtPct(c.final_parse_failure_rate)}</td>
+      <td>${c.n}</td>
+    </tr>`).join("");
+    document.getElementById("conditions-table").innerHTML = hdr + rows;
+  }
+
+  function renderConfigPre() {
+    document.getElementById("config-pre").textContent = JSON.stringify(DATA.config, null, 2);
+  }
+
+  // ---- smoke
+  async function loadSmoke() {
+    const info = DATA.smoke;
+    const el = document.getElementById("smoke-list");
+    if (!info) { el.innerHTML = `<div class="empty">no smoke-test transcripts on file</div>`; return; }
+    try {
+      const payload = await fetchJson(info.file);
+      const rows = payload.rows || [];
+      if (!rows.length) { el.innerHTML = `<div class="empty">empty</div>`; return; }
+      el.innerHTML = rows.map(r => `<div class="transcript-card">
+        <div class="meta-line">
+          <span class="badge unc">smoke</span>
+          α_s=${r.alpha_solver} · α_c=${r.alpha_critic} · gold=${r.gold_number}
+          · initial=<span class="${r.initial_correct?'ok':'bad'}">${r.initial_parsed}</span>
+          · final=<span class="${r.final_correct?'ok':'bad'}">${r.final_parsed}</span>
+        </div>
+        <details><summary>question</summary><pre>${escapeHtml(r.question)}</pre></details>
+        <details open><summary>initial</summary><pre>${escapeHtml(r.initial_text)}</pre></details>
+        <details><summary>critique</summary><pre>${escapeHtml(r.critique_text || "(none)")}</pre></details>
+        <details open><summary>final</summary><pre>${escapeHtml(r.final_text)}</pre></details>
+      </div>`).join("");
+    } catch (e) {
+      el.innerHTML = `<div class="empty">ERROR loading smoke: ${e.message}</div>`;
+    }
+  }
+
+  // ---- tabs
+  function setupTabs() {
+    document.querySelectorAll("nav button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
+        document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>
