@@ -4,7 +4,6 @@
 <meta charset="utf-8" />
 <title>Multi-agent assistant-axis steering — GSM8K dashboard</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
 <style>
   :root {
     --bg: #0f1115; --panel: #161922; --text: #e6e8ee; --muted: #9aa3b2;
@@ -34,14 +33,12 @@
   nav button.active { color: var(--text); border-bottom-color: var(--accent); }
   main { padding: 20px 24px; max-width: 1440px; margin: 0 auto; }
   .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 16px; margin-bottom: 16px; }
-  .row { display: flex; gap: 16px; flex-wrap: wrap; }
-  .col { flex: 1; min-width: 320px; }
   .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
   .stat { background: var(--panel); border: 1px solid var(--border); padding: 12px; border-radius: 6px; }
   .stat .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
   .stat .value { font-size: 22px; font-weight: 600; margin-top: 4px; }
   label { color: var(--muted); margin-right: 8px; }
-  select, input[type="number"], input[type="text"] {
+  select, input[type="text"] {
     background: var(--bg); color: var(--text); border: 1px solid var(--border);
     padding: 6px 10px; border-radius: 4px; font-size: 14px;
   }
@@ -53,7 +50,6 @@
   button.btn[disabled] { opacity: 0.4; cursor: not-allowed; }
   .toggle-group button { margin-right: 4px; }
   .toggle-group button.active { background: var(--accent); color: #001225; border-color: var(--accent); }
-  #heatmap, #baseline-bar { width: 100%; }
   pre {
     background: #0a0c10; border: 1px solid var(--border); border-radius: 4px;
     padding: 10px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;
@@ -84,6 +80,87 @@
   .badge.w2r { background: rgba(106,210,122,0.15); color: #6ad27a; }
   .badge.r2w { background: rgba(255,107,107,0.15); color: #ff6b6b; }
   .badge.unc { background: rgba(154,163,178,0.15); color: var(--muted); }
+
+  /* ---- heatmap (hand-rolled, no Plotly) ---- */
+  .heatmap-block { display: flex; align-items: stretch; gap: 8px; max-width: 760px; }
+  .heatmap-ytitle {
+    color: var(--muted); font-size: 12px;
+    writing-mode: vertical-rl; transform: rotate(180deg);
+    text-align: center; padding: 0 4px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .heatmap-wrap {
+    display: grid;
+    grid-template-columns: 60px 1fr 28px;
+    grid-template-rows: 28px 1fr 28px;
+    grid-template-areas:
+      ". xtitle ."
+      "ylabels grid colorbar"
+      ". xlabels .";
+    gap: 6px;
+    flex: 1;
+  }
+  .heatmap-xtitle { grid-area: xtitle; text-align: center; color: var(--muted); font-size: 12px; }
+  .heatmap-ylabels {
+    grid-area: ylabels; display: grid; gap: 4px;
+    color: var(--muted); font-size: 12px;
+  }
+  .heatmap-ylabels > div { display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; }
+  .heatmap-xlabels {
+    grid-area: xlabels; display: grid; gap: 4px;
+    color: var(--muted); font-size: 12px;
+  }
+  .heatmap-xlabels > div { display: flex; align-items: center; justify-content: center; }
+  .heatmap-grid {
+    grid-area: grid;
+    display: grid;
+    gap: 4px;
+    aspect-ratio: 1 / 1;
+    min-height: 0;
+  }
+  .heatmap-cell {
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 500;
+    border-radius: 4px; cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 60ms ease-out;
+    user-select: none;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    overflow: visible;
+  }
+  .heatmap-cell:hover { border-color: #fff; transform: scale(1.05); z-index: 2; }
+  .heatmap-cell.best { border-color: #ffd84d; }
+  .heatmap-cell .tip {
+    position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+    background: #0a0c10; border: 1px solid var(--border); border-radius: 4px;
+    padding: 4px 8px; font-size: 11px; white-space: nowrap; pointer-events: none;
+    opacity: 0; transition: opacity 80ms; color: var(--text); text-shadow: none;
+    z-index: 3;
+  }
+  .heatmap-cell:hover .tip { opacity: 1; }
+  .heatmap-colorbar {
+    grid-area: colorbar;
+    width: 100%;
+    border: 1px solid var(--border); border-radius: 3px;
+    background: linear-gradient(to top, #440154, #482878, #3e4989, #31688e, #26828e, #1f9e89, #35b779, #6ece58, #b5de2b, #fde725);
+    position: relative;
+  }
+  .colorbar-labels {
+    position: absolute; top: 0; left: calc(100% + 6px); height: 100%;
+    display: flex; flex-direction: column; justify-content: space-between;
+    color: var(--muted); font-size: 11px; pointer-events: none; width: 40px;
+  }
+
+  /* ---- bar chart (hand-rolled) ---- */
+  .bar-row {
+    display: grid; grid-template-columns: 240px 1fr 70px;
+    gap: 10px; align-items: center; padding: 5px 0;
+  }
+  .bar-label { color: var(--text); font-size: 13px; text-align: right; }
+  .bar-track { background: #0a0c10; border: 1px solid var(--border); border-radius: 3px; height: 22px; position: relative; overflow: hidden; }
+  .bar-fill { background: var(--accent); height: 100%; }
+  .bar-value { color: var(--text); font-size: 12px; font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
@@ -105,7 +182,6 @@
 
 <main>
 
-<!-- HEATMAPS -->
 <section id="tab-heatmaps" class="tab-content active">
   <div class="summary-grid" id="summary-cards"></div>
   <div class="panel" style="margin-top: 16px;">
@@ -121,11 +197,19 @@
       </select>
       <span class="meta" style="margin-left: 16px;">Click a cell to jump to its transcripts.</span>
     </div>
-    <div id="heatmap" style="height: 560px;"></div>
+    <div class="heatmap-block">
+      <div class="heatmap-ytitle">α_solver</div>
+      <div class="heatmap-wrap">
+        <div class="heatmap-xtitle">α_critic</div>
+        <div class="heatmap-ylabels" id="heatmap-ylabels"></div>
+        <div class="heatmap-grid" id="heatmap-grid"></div>
+        <div class="heatmap-colorbar"><div class="colorbar-labels" id="colorbar-labels"></div></div>
+        <div class="heatmap-xlabels" id="heatmap-xlabels"></div>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- TRANSCRIPTS -->
 <section id="tab-transcripts" class="tab-content">
   <div class="panel">
     <div class="filter-bar">
@@ -153,11 +237,10 @@
   </div>
 </section>
 
-<!-- BASELINES -->
 <section id="tab-baselines" class="tab-content">
   <div class="panel">
     <h3 style="margin-top: 0;">Final-accuracy comparison</h3>
-    <div id="baseline-bar" style="height: 380px;"></div>
+    <div id="baseline-bar"></div>
   </div>
   <div class="panel">
     <h3 style="margin-top: 0;">All metrics</h3>
@@ -178,14 +261,12 @@
   </div>
 </section>
 
-<!-- CONDITIONS TABLE -->
 <section id="tab-conditions" class="tab-content">
   <div class="panel" style="overflow-x: auto;">
     <table id="conditions-table"></table>
   </div>
 </section>
 
-<!-- SMOKE -->
 <section id="tab-smoke" class="tab-content">
   <div class="panel">
     <h3 style="margin-top: 0;">Smoke / sanity-check transcripts</h3>
@@ -194,7 +275,6 @@
   </div>
 </section>
 
-<!-- ABOUT -->
 <section id="tab-about" class="tab-content">
   <div class="panel">
     <h3 style="margin-top: 0;">About this experiment</h3>
@@ -206,7 +286,7 @@
       <li><b>Critic pass:</b> agent B critiques A's answer (steered at α_critic).</li>
       <li><b>Revision pass:</b> agent A revises given the critique (steered at α_solver).</li>
     </ul>
-    <p>Final accuracy is numeric exact-match on GSM8K's gold answer. Positive α → more default assistant-like; negative α → less. Steering happens at a single layer (residual stream addition).</p>
+    <p>Final accuracy is numeric exact-match on GSM8K's gold answer. Positive α → more default assistant-like; negative α → less. Steering is a residual-stream addition at a single layer.</p>
     <pre id="config-pre"></pre>
   </div>
 </section>
@@ -215,8 +295,8 @@
 
 <script>
 (function () {
-  const DATA = {};       // populated from data/index.json
-  const CACHE = {};      // per-cell + per-baseline payloads, fetched on demand
+  const DATA = {};
+  const CACHE = {};
 
   function escapeHtml(s) {
     return (s || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -224,6 +304,28 @@
   function fmtPct(x, digits = 1) {
     if (x == null || isNaN(x)) return "—";
     return (x * 100).toFixed(digits) + "%";
+  }
+
+  // ----- viridis palette (sampled) -----
+  const VIRIDIS = [
+    [68,1,84],[72,35,116],[64,67,135],[52,94,141],[41,120,142],
+    [32,144,140],[34,167,132],[68,190,112],[121,209,81],[189,222,38],[253,231,36]
+  ];
+  function viridis(t) {
+    if (t == null || isNaN(t)) return "rgb(40,46,60)";
+    t = Math.max(0, Math.min(1, t));
+    const i = Math.floor(t * (VIRIDIS.length - 1));
+    const f = t * (VIRIDIS.length - 1) - i;
+    const a = VIRIDIS[i];
+    const b = VIRIDIS[Math.min(i + 1, VIRIDIS.length - 1)];
+    const rgb = [0,1,2].map(k => Math.round(a[k] + (b[k] - a[k]) * f));
+    return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+  }
+  function luma(rgbStr) {
+    const m = rgbStr.match(/\d+/g);
+    if (!m) return 0;
+    const [r,g,b] = m.map(v => parseInt(v,10)/255);
+    return 0.2126*r + 0.7152*g + 0.0722*b;
   }
 
   async function fetchJson(url) {
@@ -235,7 +337,6 @@
     return j;
   }
 
-  // ---- init
   fetch("data/index.json").then(r => r.json()).then(idx => {
     Object.assign(DATA, idx);
     renderHeader();
@@ -251,7 +352,6 @@
     setupMetricSelect();
     setupFilters();
     setupSearch();
-    setupBaselinePager();
     loadSmoke();
   }).catch(err => {
     document.getElementById("header-meta").textContent = "ERROR loading data/index.json: " + err.message;
@@ -289,43 +389,76 @@
   }
 
   // ---- heatmap
-  let _curMetric = "final_accuracy";
   function renderHeatmap(metric) {
-    _curMetric = metric;
-    const m = DATA.heatmaps[metric]; if (!m) return;
-    const trace = {
-      x: m.x, y: m.y, z: m.z, type: "heatmap", colorscale: "Viridis",
-      hovertemplate: "α_critic=%{x}<br>α_solver=%{y}<br>" + metric + "=%{z:.3f}<extra></extra>",
-      colorbar: { title: { text: metric, font: { color: "#e6e8ee" } }, tickfont: { color: "#e6e8ee" } },
-    };
-    const annotations = [];
-    for (let i = 0; i < m.y.length; i++)
-      for (let j = 0; j < m.x.length; j++) {
-        const v = m.z[i][j];
-        if (v == null) continue;
-        annotations.push({
-          x: m.x[j], y: m.y[i],
-          text: (typeof v === "number" ? v.toFixed(2) : ""),
-          showarrow: false, font: { color: "#fff", size: 11 },
-        });
-      }
-    Plotly.react("heatmap", [trace], {
-      paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)", font: { color: "#e6e8ee" },
-      xaxis: { title: { text: "α_critic" }, type: "category" },
-      yaxis: { title: { text: "α_solver" }, type: "category", autorange: "reversed" },
-      margin: { l: 60, r: 80, t: 20, b: 60 }, annotations,
-    }, { displayModeBar: false, responsive: true });
+    const m = DATA.heatmaps[metric];
+    if (!m) return;
+    const xs = m.x;                            // α_critic in ascending order
+    const ys = m.y;                            // α_solver in ascending order
+    const ys_display = ys.slice().reverse();   // top = most positive
 
-    document.getElementById("heatmap").on("plotly_click", function (ev) {
-      if (!ev.points || !ev.points.length) return;
-      const p = ev.points[0];
-      const key = `${p.y}__${p.x}`;
-      const sel = document.getElementById("cell-select");
-      if ([...sel.options].some(o => o.value === key)) {
-        sel.value = key;
-        sel.dispatchEvent(new Event("change"));
-        document.querySelector('nav button[data-tab="transcripts"]').click();
+    let zmin = Infinity, zmax = -Infinity;
+    for (const row of m.z) for (const v of row) {
+      if (v != null && !isNaN(v)) {
+        if (v < zmin) zmin = v;
+        if (v > zmax) zmax = v;
       }
+    }
+    if (!isFinite(zmin)) { zmin = 0; zmax = 1; }
+    if (zmin === zmax) { zmax = zmin + 1e-6; }
+    const span = zmax - zmin;
+
+    // Best cell highlight
+    let bestKey = null, bestVal = -Infinity;
+    for (let i = 0; i < ys.length; i++) for (let j = 0; j < xs.length; j++) {
+      const v = m.z[i][j];
+      if (v != null && v > bestVal) { bestVal = v; bestKey = `${ys[i]}__${xs[j]}`; }
+    }
+
+    const grid = document.getElementById("heatmap-grid");
+    const yl = document.getElementById("heatmap-ylabels");
+    const xl = document.getElementById("heatmap-xlabels");
+    const cbl = document.getElementById("colorbar-labels");
+
+    grid.style.gridTemplateColumns = `repeat(${xs.length}, 1fr)`;
+    grid.style.gridTemplateRows = `repeat(${ys.length}, 1fr)`;
+    yl.style.gridTemplateRows = `repeat(${ys.length}, 1fr)`;
+    xl.style.gridTemplateColumns = `repeat(${xs.length}, 1fr)`;
+
+    yl.innerHTML = ys_display.map(y => `<div>${y}</div>`).join("");
+    xl.innerHTML = xs.map(x => `<div>${x}</div>`).join("");
+    cbl.innerHTML = `<span>${(zmax*100).toFixed(0)}%</span><span>${(zmin*100).toFixed(0)}%</span>`;
+
+    const cells = [];
+    for (const y of ys_display) {
+      const i = ys.indexOf(y);
+      for (let j = 0; j < xs.length; j++) {
+        const x = xs[j];
+        const v = m.z[i][j];
+        const t = (v == null) ? null : (v - zmin) / span;
+        const bg = viridis(t);
+        const fg = luma(bg) > 0.55 ? "#0a0c10" : "#fff";
+        const text = (v == null) ? "—" : v.toFixed(2);
+        const key = `${y}__${x}`;
+        const cls = "heatmap-cell" + (key === bestKey ? " best" : "");
+        cells.push(
+          `<div class="${cls}" data-key="${key}" style="background:${bg}; color:${fg};">` +
+          `<span>${text}</span>` +
+          `<span class="tip">α_s=${y}, α_c=${x} · ${metric}=${v==null?"—":v.toFixed(3)}</span>` +
+          `</div>`
+        );
+      }
+    }
+    grid.innerHTML = cells.join("");
+    grid.querySelectorAll(".heatmap-cell").forEach(el => {
+      el.addEventListener("click", () => {
+        const key = el.dataset.key;
+        const sel = document.getElementById("cell-select");
+        if ([...sel.options].some(o => o.value === key)) {
+          sel.value = key;
+          sel.dispatchEvent(new Event("change"));
+          document.querySelector('nav button[data-tab="transcripts"]').click();
+        }
+      });
     });
   }
   function setupMetricSelect() {
@@ -333,7 +466,6 @@
   }
 
   // ---- transcripts tab
-  let _curCellKey = null;
   let _curCellRows = [];
   let _curFilter = "all";
   let _curSearch = "";
@@ -355,7 +487,6 @@
     }
   }
   async function loadCell(key) {
-    _curCellKey = key;
     _curPage = 0;
     const cfg = (DATA.cell_index || []).find(c => c.key === key);
     if (!cfg) return;
@@ -386,7 +517,6 @@
       }
       return true;
     });
-    // counts banner
     const n = rows.length;
     const counts = {
       wrong_to_right: rows.filter(r => classifyRow(r) === "wrong_to_right").length,
@@ -407,8 +537,8 @@
     document.getElementById("transcripts-list").innerHTML =
       slice.length ? slice.map(renderTranscriptCard).join("") :
       `<div class="empty">no rows match the current filter</div>`;
-    renderPagerInto("pager-top", _curPage, pages);
-    renderPagerInto("pager-bottom", _curPage, pages);
+    renderPagerInto("pager-top", _curPage, pages, () => renderTranscripts(), v => _curPage = v);
+    renderPagerInto("pager-bottom", _curPage, pages, () => renderTranscripts(), v => _curPage = v);
   }
   function renderTranscriptCard(r) {
     const cls = classifyRow(r);
@@ -430,17 +560,17 @@
       <details open><summary>final (α_s=${r.alpha_solver})</summary><pre>${escapeHtml(r.final_text)}</pre></details>
     </div>`;
   }
-  function renderPagerInto(id, page, total) {
+  function renderPagerInto(id, page, total, rerender, setter) {
     const el = document.getElementById(id);
     el.innerHTML =
       `<button class="btn" id="${id}-prev" ${page <= 0 ? "disabled" : ""}>← prev</button>` +
       `<span class="meta">page ${page+1} of ${total}</span>` +
       `<button class="btn" id="${id}-next" ${page >= total-1 ? "disabled" : ""}>next →</button>`;
-    document.getElementById(id+"-prev").onclick = () => { if (_curPage > 0) { _curPage--; renderTranscripts(); } };
-    document.getElementById(id+"-next").onclick = () => { _curPage++; renderTranscripts(); };
+    document.getElementById(id+"-prev").onclick = () => { if (page > 0) { setter(page-1); rerender(); } };
+    document.getElementById(id+"-next").onclick = () => { if (page < total-1) { setter(page+1); rerender(); } };
   }
   function setupFilters() {
-    document.querySelectorAll('.toggle-group[role], .toggle-group').forEach(group => {
+    document.querySelectorAll('.toggle-group').forEach(group => {
       group.querySelectorAll("button[data-filter]").forEach(btn => {
         btn.addEventListener("click", () => {
           group.querySelectorAll("button[data-filter]").forEach(b => b.classList.remove("active"));
@@ -461,25 +591,27 @@
     });
   }
 
-  // ---- baselines
+  // ---- baseline bar (hand-rolled)
   function renderBaselineBar() {
     const sum = DATA.summary || {};
-    const xs = [], ys = [];
     const b = DATA.baselines || {};
-    if (b.single_agent_direct) { xs.push("single direct"); ys.push(b.single_agent_direct.metrics.final_accuracy); }
-    if (b.single_agent_self_revision) { xs.push("self-revision"); ys.push(b.single_agent_self_revision.metrics.final_accuracy); }
-    if (sum.unsteered) { xs.push("2-agent α=(0,0)"); ys.push(sum.unsteered.final_accuracy); }
-    if (sum.best) { xs.push(`2-agent best (${sum.best.alpha_solver},${sum.best.alpha_critic})`); ys.push(sum.best.final_accuracy); }
+    const items = [];
+    if (b.single_agent_direct) items.push(["single direct", b.single_agent_direct.metrics.final_accuracy]);
+    if (b.single_agent_self_revision) items.push(["self-revision", b.single_agent_self_revision.metrics.final_accuracy]);
+    if (sum.unsteered) items.push(["2-agent α=(0,0)", sum.unsteered.final_accuracy]);
+    if (sum.best) items.push([`2-agent best (${sum.best.alpha_solver},${sum.best.alpha_critic})`, sum.best.final_accuracy]);
     Object.keys(b).filter(k => k.startsWith("random_vector__")).forEach(k => {
-      xs.push("rand " + k.replace("random_vector__", "")); ys.push(b[k].metrics.final_accuracy);
+      items.push(["rand " + k.replace("random_vector__", ""), b[k].metrics.final_accuracy]);
     });
-    Plotly.react("baseline-bar",
-      [{ x: xs, y: ys, type: "bar", marker: { color: "#7ab8ff" },
-         text: ys.map(v => v == null ? "—" : (v*100).toFixed(1)+"%"), textposition: "outside" }],
-      { paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)", font: { color: "#e6e8ee" },
-        yaxis: { title: { text: "final_accuracy" }, range: [0, 1] },
-        xaxis: { tickangle: -20 }, margin: { l: 60, r: 20, t: 30, b: 110 } },
-      { displayModeBar: false, responsive: true });
+    document.getElementById("baseline-bar").innerHTML = items.map(([name, val]) => {
+      const pct = ((val ?? 0) * 100).toFixed(1);
+      const color = viridis(val ?? 0);
+      return `<div class="bar-row">
+        <div class="bar-label">${escapeHtml(name)}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${color};"></div></div>
+        <div class="bar-value">${fmtPct(val)}</div>
+      </div>`;
+    }).join("");
   }
   function renderBaselineTable() {
     const rows = [];
@@ -504,7 +636,6 @@
   }
 
   // ---- baseline transcripts
-  let _curBaseline = null;
   let _curBaselineRows = [];
   let _curBaselinePage = 0;
   function populateBaselineSelect() {
@@ -523,7 +654,7 @@
     }
   }
   async function loadBaseline(name) {
-    _curBaseline = name; _curBaselinePage = 0;
+    _curBaselinePage = 0;
     const item = (DATA.baselines || {})[name]; if (!item) return;
     try {
       const payload = await fetchJson(item.file);
@@ -541,19 +672,9 @@
     const slice = rows.slice(_curBaselinePage * PAGE_SIZE, (_curBaselinePage + 1) * PAGE_SIZE);
     document.getElementById("baseline-list").innerHTML =
       slice.length ? slice.map(renderTranscriptCard).join("") : `<div class="empty">no rows</div>`;
-    renderBaselinePagerInto("baseline-pager-top", _curBaselinePage, pages);
-    renderBaselinePagerInto("baseline-pager-bottom", _curBaselinePage, pages);
+    renderPagerInto("baseline-pager-top", _curBaselinePage, pages, () => renderBaselineTranscripts(), v => _curBaselinePage = v);
+    renderPagerInto("baseline-pager-bottom", _curBaselinePage, pages, () => renderBaselineTranscripts(), v => _curBaselinePage = v);
   }
-  function renderBaselinePagerInto(id, page, total) {
-    const el = document.getElementById(id);
-    el.innerHTML =
-      `<button class="btn" id="${id}-prev" ${page <= 0 ? "disabled" : ""}>← prev</button>` +
-      `<span class="meta">page ${page+1} of ${total}</span>` +
-      `<button class="btn" id="${id}-next" ${page >= total-1 ? "disabled" : ""}>next →</button>`;
-    document.getElementById(id+"-prev").onclick = () => { if (_curBaselinePage > 0) { _curBaselinePage--; renderBaselineTranscripts(); } };
-    document.getElementById(id+"-next").onclick = () => { _curBaselinePage++; renderBaselineTranscripts(); };
-  }
-  function setupBaselinePager() { /* set up in populateBaselineSelect */ }
 
   // ---- conditions table
   function renderConditionsTable() {
@@ -577,7 +698,6 @@
     document.getElementById("config-pre").textContent = JSON.stringify(DATA.config, null, 2);
   }
 
-  // ---- smoke
   async function loadSmoke() {
     const info = DATA.smoke;
     const el = document.getElementById("smoke-list");
@@ -603,7 +723,6 @@
     }
   }
 
-  // ---- tabs
   function setupTabs() {
     document.querySelectorAll("nav button").forEach(btn => {
       btn.addEventListener("click", () => {
